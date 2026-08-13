@@ -8,7 +8,7 @@ import { NextResponse, type NextRequest } from "next/server";
  * expires and RLS-protected queries start returning empty result sets rather
  * than an obvious auth error — a confusing failure worth preventing centrally.
  */
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   let response = NextResponse.next({ request });
 
   const supabase = createServerClient(

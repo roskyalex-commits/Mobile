@@ -1,26 +1,56 @@
 @import "tailwindcss";
 
+/*
+ * Palette: sea-buckthorn amber on a warm off-white — a Romanian berry rather
+ * than the purple-gradient default. Tokens are defined light-first on :root and
+ * only overridden in the dark block, so nothing has its sole definition inside
+ * a media query.
+ */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #fbf9f5;
+  --surface: #ffffff;
+  --foreground: #1c1a17;
+  --muted: #6b6459;
+  --border: #e6e0d6;
+  --accent: #c2610f;
+  --accent-foreground: #ffffff;
+  --accent-soft: #fdf1e3;
+  --danger: #a3341f;
+  --success: #2f6b46;
 }
 
 @theme inline {
   --color-background: var(--background);
+  --color-surface: var(--surface);
   --color-foreground: var(--foreground);
+  --color-muted: var(--muted);
+  --color-border: var(--border);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent-soft: var(--accent-soft);
+  --color-danger: var(--danger);
+  --color-success: var(--success);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --background: #14120f;
+    --surface: #1d1a16;
+    --foreground: #f2ede5;
+    --muted: #a39a8c;
+    --border: #332e27;
+    --accent: #e88b3c;
+    --accent-foreground: #14120f;
+    --accent-soft: #2a2118;
+    --danger: #e0705a;
+    --success: #6cb98d;
   }
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans), system-ui, sans-serif;
 }
