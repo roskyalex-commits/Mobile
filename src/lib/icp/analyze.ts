@@ -159,6 +159,9 @@ export function normalise(raw: z.infer<typeof extractionSchema>): Icp {
       employeeMax !== null && employeeMin !== null && employeeMax < employeeMin
         ? null
         : employeeMax,
+    // Not inferable from a website; the user sets these in step 2.
+    revenueMinRon: null,
+    revenueMaxRon: null,
     confidence: Math.min(1, Math.max(0, raw.confidence)),
     assumptions: raw.assumptions.map((a) => a.trim()).filter(Boolean).slice(0, 6),
   };

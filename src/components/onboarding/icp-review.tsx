@@ -156,6 +156,28 @@ export function IcpReview({
           />
         </div>
 
+        {icp.countries.includes("RO") && (
+          <div>
+            <p className="text-sm font-medium">Revenue band (RON)</p>
+            <p className="mt-0.5 text-xs text-muted">
+              From ANAF&rsquo;s annual filings — official, and unavailable to any
+              international prospecting tool. Leave blank for any size.
+            </p>
+            <div className="mt-2 grid gap-4 sm:grid-cols-2">
+              <NumberField
+                label="Min revenue"
+                value={icp.revenueMinRon}
+                onChange={(v) => update("revenueMinRon", v)}
+              />
+              <NumberField
+                label="Max revenue"
+                value={icp.revenueMaxRon}
+                onChange={(v) => update("revenueMaxRon", v)}
+              />
+            </div>
+          </div>
+        )}
+
         <ChipInput
           label="Keywords"
           values={icp.keywords}

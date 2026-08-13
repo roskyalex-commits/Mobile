@@ -18,6 +18,8 @@
     "db:types": "supabase gen types typescript --project-id $SUPABASE_PROJECT_ID --schema public > src/lib/supabase/types.ts",
     "db:setup": "npm run db:push && npm run db:policies",
 
+    "verify:anaf": "tsx scripts/verify-anaf.ts",
+
     "cf:build": "opennextjs-cloudflare build",
     "cf:preview": "opennextjs-cloudflare preview",
     "cf:deploy": "opennextjs-cloudflare deploy",

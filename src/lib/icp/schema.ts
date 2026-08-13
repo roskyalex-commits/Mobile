@@ -51,6 +51,15 @@ export const icpSchema = z.object({
   employeeMin: z.number().int().min(0).max(1_000_000).nullable().default(null),
   employeeMax: z.number().int().min(0).max(1_000_000).nullable().default(null),
 
+  /**
+   * Revenue band in RON, from ANAF's annual filings. Not inferred from the
+   * website — the model has no basis for it — so these stay null until the
+   * user sets them in onboarding step 2. Romania-only: no other market in the
+   * MVP has free, official revenue data to filter on.
+   */
+  revenueMinRon: z.number().min(0).nullable().default(null),
+  revenueMaxRon: z.number().min(0).nullable().default(null),
+
   /** 0..1 — how well the site supported this inference. Drives UI nudges. */
   confidence: z.number().min(0).max(1).default(0.5),
   /** What was guessed rather than read, so the user knows what to check. */
