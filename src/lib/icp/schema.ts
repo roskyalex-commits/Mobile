@@ -67,6 +67,8 @@ export const icpSchema = z.object({
 });
 
 export type Icp = z.infer<typeof icpSchema>;
+export type Seniority = (typeof SENIORITIES)[number];
+export type CompanyType = (typeof COMPANY_TYPES)[number];
 
 export const SENIORITY_LABELS: Record<(typeof SENIORITIES)[number], string> = {
   founder: "Founder / Owner",
