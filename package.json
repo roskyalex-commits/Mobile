@@ -19,6 +19,7 @@
     "db:setup": "npm run db:push && npm run db:policies",
 
     "verify:anaf": "tsx scripts/verify-anaf.ts",
+    "verify:rls": "tsx scripts/verify-rls.ts",
     "spike:people": "tsx scripts/spike-people-coverage.ts",
 
     "cf:build": "opennextjs-cloudflare build",
