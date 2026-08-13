@@ -130,3 +130,36 @@ drop policy if exists email_accounts_no_access on public.email_accounts;
 
 alter table public.provider_usage enable row level security;
 drop policy if exists provider_usage_no_access on public.provider_usage;
+
+-- ------------------------------------------------------ provider credit ledger
+-- Atomic increment for the enrichment waterfall's free-tier budget check.
+--
+-- The application must not read-modify-write this counter: enrichment runs
+-- concurrently by design, and lost updates would let a free tier be overspent
+-- into 429s — the exact failure the ledger exists to prevent.
+create or replace function public.increment_provider_usage(
+  p_org_id uuid,
+  p_provider text,
+  p_period_month text,
+  p_amount integer,
+  p_limit integer default null
+)
+returns void
+language sql
+security definer
+set search_path = public
+as $$
+  insert into public.provider_usage
+    (org_id, provider, period_month, credits_used, credits_limit, last_call_at)
+  values
+    (p_org_id, p_provider, p_period_month, p_amount, p_limit, now())
+  on conflict (org_id, provider, period_month) do update
+    set credits_used = public.provider_usage.credits_used + excluded.credits_used,
+        credits_limit = coalesce(excluded.credits_limit, public.provider_usage.credits_limit),
+        last_call_at = now();
+$$;
+
+-- Service-role only: provider_usage denies all user access via RLS, and this
+-- function is SECURITY DEFINER, so it must not be callable by an end user.
+revoke all on function public.increment_provider_usage(uuid, text, text, integer, integer) from public;
+revoke all on function public.increment_provider_usage(uuid, text, text, integer, integer) from authenticated;

@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import { AnalyzeForm } from "@/components/onboarding/analyze-form";
 import { IcpReview } from "@/components/onboarding/icp-review";
@@ -40,9 +41,11 @@ export default function Home() {
         <div className="space-y-4">
           <h2 className="text-2xl font-semibold">Your ICP is set</h2>
           <p className="text-muted">
-            Next: connect Gmail and let the agent start sourcing. That&rsquo;s the
-            next build phase — the registry engine and enrichment waterfall land
-            before this button does anything.
+            Continue in the{" "}
+            <Link href="/app" className="text-accent underline underline-offset-2">
+              dashboard
+            </Link>
+            , where sourcing, leads and outreach live.
           </p>
           <pre className="overflow-x-auto rounded-lg border border-border bg-surface p-4 text-xs">
             {JSON.stringify(confirmed, null, 2)}
