@@ -1,5 +1,5 @@
 {
-  "id": "172b65ee-d9ad-4868-a7df-687cc0e45b92",
+  "id": "98a7ceb5-2e9d-41db-b37d-a3ade40bc799",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -243,6 +243,19 @@
             "id"
           ],
           "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "agents_email_account_id_email_accounts_id_fk": {
+          "name": "agents_email_account_id_email_accounts_id_fk",
+          "tableFrom": "agents",
+          "tableTo": "email_accounts",
+          "columnsFrom": [
+            "email_account_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
           "onUpdate": "no action"
         }
       },

@@ -130,8 +130,16 @@ export const agents = pgTable(
     status: text("status", { enum: ["draft", "active", "paused"] })
       .notNull()
       .default("draft"),
-    /** Mailbox this agent sends from. Null until Gmail is connected. */
-    emailAccountId: uuid("email_account_id"),
+    /**
+     * Mailbox this agent sends from. Null until Gmail is connected, and set
+     * back to null if that mailbox is disconnected — without the FK a deleted
+     * account would leave the agent claiming to send from an address that no
+     * longer exists.
+     */
+    emailAccountId: uuid("email_account_id").references(
+      () => emailAccounts.id,
+      { onDelete: "set null" },
+    ),
     lastLaunchAt: timestamp("last_launch_at", { withTimezone: true }),
     nextLaunchAt: timestamp("next_launch_at", { withTimezone: true }),
 

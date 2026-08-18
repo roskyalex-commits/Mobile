@@ -40,12 +40,22 @@ export async function proxy(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   const path = request.nextUrl.pathname;
-  const isProtected = path.startsWith("/app");
 
-  if (isProtected && !user) {
+  // /onboarding is deliberately open: pasting a website and seeing an inferred
+  // ICP is the pitch, and putting a signup wall in front of it kills it.
+  if (path.startsWith("/app") && !user) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     url.searchParams.set("next", path);
+    return NextResponse.redirect(url);
+  }
+
+  // A signed-in user landing on the forms is almost always a stale tab or a
+  // bookmark; send them where they meant to go.
+  if (user && (path === "/login" || path === "/signup")) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/app";
+    url.search = "";
     return NextResponse.redirect(url);
   }
 

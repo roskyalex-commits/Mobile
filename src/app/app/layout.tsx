@@ -1,4 +1,5 @@
 import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 import { AppShell, SIDEBAR_COOKIE } from "@/components/app-shell/shell";
 import { getShellContext } from "@/lib/data/shell";
 
@@ -16,6 +17,11 @@ export default async function AppLayout({
   children: React.ReactNode;
 }) {
   const [shell, cookieStore] = await Promise.all([getShellContext(), cookies()]);
+
+  // Signed in but no workspace yet — the gap between confirming an email and
+  // the org existing. /auth/bootstrap creates it and sends them back here.
+  if (shell.needsBootstrap) redirect("/auth/bootstrap");
+
   const collapsed = cookieStore.get(SIDEBAR_COOKIE)?.value === "1";
 
   return (

@@ -8,6 +8,7 @@ import {
   ChevronRight,
   Database,
   FlaskConical,
+  LogOut,
   Video,
   X,
 } from "lucide-react";
@@ -228,12 +229,29 @@ export function Sidebar({
             {user.name.slice(0, 1).toUpperCase()}
           </span>
           {!collapsed && (
-            <span className="min-w-0">
-              <span className="block truncate text-[13px] font-medium leading-tight">
-                {user.name}
+            <>
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-[13px] font-medium leading-tight">
+                  {user.name}
+                </span>
+                <span className="block truncate text-xs text-muted">
+                  {user.email}
+                </span>
               </span>
-              <span className="block truncate text-xs text-muted">{user.email}</span>
-            </span>
+
+              {/* A form, not a link: signing out is a POST so a prefetch or a
+                  link scanner cannot end the session. */}
+              <form action="/auth/signout" method="post">
+                <button
+                  type="submit"
+                  aria-label="Sign out"
+                  title="Sign out"
+                  className="rounded-md p-1.5 text-muted transition hover:bg-background hover:text-foreground"
+                >
+                  <LogOut className="h-4 w-4" aria-hidden />
+                </button>
+              </form>
+            </>
           )}
         </div>
       </nav>
