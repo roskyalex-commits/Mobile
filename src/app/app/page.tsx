@@ -1,89 +1,234 @@
 import Link from "next/link";
-import { ArrowRight, Radar } from "lucide-react";
-import { EmptyState, PageHeader, StatCard } from "@/components/app-shell/page";
-import { PLANS, checkQuota } from "@/lib/billing/limits";
+import {
+  ArrowRight,
+  MessageSquare,
+  Radar,
+  Rocket,
+  UserRound,
+  Zap,
+} from "lucide-react";
+import { AreaChart } from "@/components/charts/area-chart";
+import {
+  Avatar,
+  Card,
+  EmptyState,
+  Flames,
+  LinkButton,
+  Pill,
+  SectionTitle,
+  relativeTime,
+} from "@/components/ui/primitives";
+import { Segmented } from "@/components/ui/segmented";
+import { StatTile } from "@/components/ui/stat";
+import { getDashboard } from "@/lib/data/dashboard";
+import { RANGE_LABELS } from "@/lib/data/types";
+import type { RangeKey } from "@/lib/data/types";
 
-export default function DashboardPage() {
-  // TODO(phase-6): read real usage once the database is running. The plan
-  // shape is real, so the allowances shown here are the ones that will apply.
-  const plan = "free" as const;
-  const usage = { companies: 0, enrichments: 0, drafts: 0 };
-  const limits = PLANS[plan];
+const RANGE_OPTIONS = (Object.keys(RANGE_LABELS) as RangeKey[]).map((value) => ({
+  value,
+  label: RANGE_LABELS[value],
+}));
 
-  const enrichmentQuota = checkQuota(plan, "enrichments", usage.enrichments);
-  const draftQuota = checkQuota(plan, "drafts", usage.drafts);
+function parseRange(value: string | undefined): RangeKey {
+  return value && value in RANGE_LABELS ? (value as RangeKey) : "30d";
+}
+
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ range?: string }>;
+}) {
+  const range = parseRange((await searchParams).range);
+  const data = await getDashboard(range);
+  const rangeLabel = RANGE_LABELS[range];
 
   return (
     <>
-      <PageHeader
-        title="Dashboard"
-        description="What the agent found while you were away."
-        action={
-          <Link
-            href="/app/icp"
-            className="inline-flex items-center gap-2 rounded-lg bg-accent px-4 py-2.5 text-sm font-medium text-accent-foreground transition hover:opacity-90"
-          >
-            Set your ideal customer
-            <ArrowRight className="h-4 w-4" aria-hidden />
-          </Link>
-        }
-      />
+      <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
+        <h1 className="text-[28px] font-semibold tracking-[-0.02em]">
+          Welcome {data.greetingName} <span aria-hidden>🚀</span>
+        </h1>
 
-      <div className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard
-          label="Companies sourced"
-          value={usage.companies}
-          hint={`${limits.maxCompanies.toLocaleString("en")} included`}
+        <div className="flex flex-wrap items-center gap-2">
+          <Pill tone="neutral" className="ring-1 ring-border">
+            <Radar className="h-3.5 w-3.5" aria-hidden />
+            {data.activeSignals} Active Signal{data.activeSignals === 1 ? "" : "s"}
+          </Pill>
+          {!data.mailboxConnected && (
+            <LinkButton href="/app/settings" variant="secondary" className="border-accent-ring text-accent">
+              Connect Gmail
+            </LinkButton>
+          )}
+        </div>
+      </div>
+
+      <div className="mb-5 flex justify-end">
+        <Segmented param="range" value={range} options={RANGE_OPTIONS} />
+      </div>
+
+      <div className="mb-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-6">
+        <StatTile
+          className="lg:col-span-2"
+          icon={Zap}
+          label="Next actions"
+          value={data.nextActions.pendingTasks}
+          hint={
+            data.nextActions.nextLaunchAt ? (
+              <span className="flex items-center gap-1.5">
+                <span className="h-1.5 w-1.5 rounded-full bg-warning" />
+                Next launch ~ {relativeTime(data.nextActions.nextLaunchAt)}
+              </span>
+            ) : (
+              "No launch scheduled"
+            )
+          }
+          footer={
+            <>
+              <span className="flex items-center gap-1.5">
+                <UserRound className="h-3.5 w-3.5" aria-hidden />
+                {data.nextActions.companiesSourced} companies
+              </span>
+              <span className="flex items-center gap-1.5">
+                <MessageSquare className="h-3.5 w-3.5" aria-hidden />
+                {data.nextActions.messagesDrafted} drafts
+              </span>
+            </>
+          }
         />
-        <StatCard
-          label="Leads enriched"
-          value={usage.enrichments}
-          hint={`${enrichmentQuota.remaining} left this month`}
+
+        <StatTile
+          label="Hot Opportunities"
+          value={data.hotOpportunities}
+          hint={`Scoring 70+ · ${rangeLabel}`}
         />
-        <StatCard label="Signals this week" value={0} hint="scanned daily on Free" />
-        <StatCard
-          label="Drafts awaiting review"
-          value={usage.drafts}
-          hint={`${draftQuota.remaining} left this month`}
+
+        <StatTile
+          label="Leads Engaged"
+          value={data.leadsEngaged}
+          hint={`Emails sent · ${rangeLabel}`}
+        />
+
+        <StatTile
+          label="Conversations"
+          value={
+            data.conversations === 0 ? (
+              <span className="text-border-strong">—</span>
+            ) : (
+              data.conversations
+            )
+          }
+          hint={
+            <>
+              Replies need Gmail read access, a restricted scope.{" "}
+              <Link href="/app/inbox" className="text-accent underline underline-offset-2">
+                Why
+              </Link>
+            </>
+          }
+        />
+
+        <StatTile
+          label="Pipeline generated"
+          value={
+            data.pipeline.valueEur === null ? (
+              <span className="text-border-strong">—</span>
+            ) : (
+              `€${data.pipeline.valueEur.toLocaleString("en")}`
+            )
+          }
+          action={
+            <button type="button" className="text-[13px] text-accent">
+              Edit
+            </button>
+          }
+          hint={
+            data.pipeline.dealSizeSet
+              ? `From ${data.hotOpportunities} qualified opportunities`
+              : "Set deal size to see pipeline generated"
+          }
         />
       </div>
 
-      <EmptyState icon={Radar} title="No agent runs yet">
-        Set an ideal customer profile and the registry engine starts sourcing
-        from the Romanian trade register. Everything here fills in from the
-        first run.
-      </EmptyState>
+      <Card className="mb-5 p-5">
+        <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+          <SectionTitle
+            title="Activity Overview"
+            description="Track your lead generation and outreach performance"
+          />
+        </div>
+        {data.chart.labels.length ? (
+          <AreaChart data={data.chart} height={260} />
+        ) : (
+          <EmptyState icon={Radar} title="Nothing plotted yet" compact>
+            The chart fills in from the first agent launch.
+          </EmptyState>
+        )}
+      </Card>
 
-      <section className="mt-8">
-        <h2 className="mb-3 text-sm font-medium uppercase tracking-wide text-muted">
-          On the {limits.name} plan
-        </h2>
-        <ul className="divide-y divide-border overflow-hidden rounded-lg border border-border bg-surface text-sm">
-          {[
-            [
-              "Sourcing",
-              `${limits.maxCompanies.toLocaleString("en")} companies — the Romanian registry is free, so this is generous.`,
-            ],
-            [
-              "Enrichment",
-              `${limits.maxEnrichmentsPerMonth}/month — this is the path that spends vendor credits, so it's the tight one.`,
-            ],
-            ["Sending", `${limits.maxSendsPerDay} messages/day from ${limits.maxConnectedMailboxes} mailbox.`],
-            [
-              "Review",
-              limits.autoSend
-                ? "Auto-send available per campaign."
-                : "Every message waits for your approval. Auto-send needs Pro.",
-            ],
-            ["Export", limits.csvExport ? "CSV export included." : "Not included."],
-          ].map(([label, detail]) => (
-            <li key={label} className="flex flex-col gap-0.5 px-4 py-3 sm:flex-row sm:gap-4">
-              <span className="w-24 shrink-0 font-medium">{label}</span>
-              <span className="text-muted">{detail}</span>
-            </li>
-          ))}
-        </ul>
-      </section>
+      <div className="grid gap-4 lg:grid-cols-2">
+        <Card className="p-5">
+          <div className="mb-4 flex items-start gap-3">
+            <span className="grid h-9 w-9 shrink-0 place-items-center rounded-[10px] bg-accent-soft text-accent">
+              <UserRound className="h-[18px] w-[18px]" aria-hidden />
+            </span>
+            <SectionTitle
+              title="Latest Hot Leads"
+              description="Your most promising prospects"
+            />
+            <Link
+              href="/app/contacts"
+              className="ml-auto flex shrink-0 items-center gap-1 text-[13px] text-accent"
+            >
+              View More
+              <ArrowRight className="h-3.5 w-3.5" aria-hidden />
+            </Link>
+          </div>
+
+          {data.hotLeads.length ? (
+            <ul className="divide-y divide-border">
+              {data.hotLeads.map((lead) => (
+                <li key={lead.id} className="flex items-center gap-3 py-3">
+                  <Avatar name={lead.fullName} size={36} />
+                  <div className="min-w-0 flex-1">
+                    <Link
+                      href={`/app/contacts?q=${encodeURIComponent(lead.fullName)}`}
+                      className="block truncate text-[13px] font-medium text-info hover:underline"
+                    >
+                      {lead.fullName}
+                    </Link>
+                    <p className="truncate text-[13px] text-muted">
+                      {lead.title} @ {lead.companyName}
+                    </p>
+                  </div>
+                  <Flames count={lead.flames} score={lead.score} />
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <EmptyState icon={Rocket} title="No leads yet" compact>
+              Launch an agent and the highest-scoring people land here.
+            </EmptyState>
+          )}
+        </Card>
+
+        <Card className="p-5">
+          <div className="mb-4 flex items-start gap-3">
+            <span className="grid h-9 w-9 shrink-0 place-items-center rounded-[10px] bg-info-soft text-info">
+              <MessageSquare className="h-[18px] w-[18px]" aria-hidden />
+            </span>
+            <SectionTitle
+              title="Latest Replies"
+              description="Recent conversation responses"
+            />
+          </div>
+
+          <EmptyState icon={MessageSquare} title="No replies tracked" compact>
+            Reading a mailbox needs Gmail&rsquo;s restricted scope and a CASA
+            audit. Sending does not, so outreach works today — replies land in
+            your own inbox until that is in place.
+          </EmptyState>
+        </Card>
+      </div>
     </>
   );
 }

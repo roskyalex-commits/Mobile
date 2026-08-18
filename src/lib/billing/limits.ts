@@ -25,7 +25,7 @@ export type PlanLimits = {
   maxDraftsPerMonth: number;
   maxConnectedMailboxes: number;
   maxSendsPerDay: number;
-  maxIcpProfiles: number;
+  maxAgents: number;
   maxSeats: number;
   /** Signal scan frequency. Free tier scans daily rather than hourly. */
   scanIntervalHours: number;
@@ -45,7 +45,7 @@ export const PLANS: Record<PlanId, PlanLimits> = {
     maxDraftsPerMonth: 50,
     maxConnectedMailboxes: 1,
     maxSendsPerDay: 20,
-    maxIcpProfiles: 1,
+    maxAgents: 1,
     maxSeats: 1,
     scanIntervalHours: 24,
     csvExport: true,
@@ -63,7 +63,7 @@ export const PLANS: Record<PlanId, PlanLimits> = {
     maxDraftsPerMonth: 2_000,
     maxConnectedMailboxes: 3,
     maxSendsPerDay: 100,
-    maxIcpProfiles: 5,
+    maxAgents: 5,
     maxSeats: 3,
     scanIntervalHours: 1,
     csvExport: true,
@@ -78,7 +78,7 @@ export const PLANS: Record<PlanId, PlanLimits> = {
     maxDraftsPerMonth: Number.MAX_SAFE_INTEGER,
     maxConnectedMailboxes: 20,
     maxSendsPerDay: 500,
-    maxIcpProfiles: 50,
+    maxAgents: 50,
     maxSeats: 50,
     scanIntervalHours: 1,
     csvExport: true,
@@ -92,7 +92,7 @@ export type MeteredResource =
   | "drafts"
   | "mailboxes"
   | "sendsToday"
-  | "icpProfiles"
+  | "agents"
   | "seats";
 
 const LIMIT_KEYS: Record<MeteredResource, keyof PlanLimits> = {
@@ -101,7 +101,7 @@ const LIMIT_KEYS: Record<MeteredResource, keyof PlanLimits> = {
   drafts: "maxDraftsPerMonth",
   mailboxes: "maxConnectedMailboxes",
   sendsToday: "maxSendsPerDay",
-  icpProfiles: "maxIcpProfiles",
+  agents: "maxAgents",
   seats: "maxSeats",
 };
 
@@ -112,7 +112,7 @@ const RESOURCE_LABELS: Record<MeteredResource, string> = {
   drafts: "drafted messages this month",
   mailboxes: "connected mailboxes",
   sendsToday: "messages sent today",
-  icpProfiles: "saved ideal-customer profiles",
+  agents: "agents",
   seats: "team members",
 };
 

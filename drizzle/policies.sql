@@ -32,7 +32,8 @@ do $$
 declare
   t text;
   tenant_tables text[] := array[
-    'icp_profiles',
+    'agents',
+    'lists',
     'leads',
     'campaigns',
     'messages',
@@ -52,6 +53,28 @@ begin
     $p$, t || '_member_all', t);
   end loop;
 end $$;
+
+-- list_members: no org_id of its own — a membership row is reachable exactly when
+-- its list is. Written as an exists() against `lists` rather than a join on
+-- `leads` so a lead moved between lists cannot leak across the tenancy boundary.
+alter table public.list_members enable row level security;
+drop policy if exists list_members_member_all on public.list_members;
+create policy list_members_member_all on public.list_members
+  for all to authenticated
+  using (
+    exists (
+      select 1 from public.lists l
+      where l.id = list_members.list_id
+        and l.org_id in (select public.current_org_ids())
+    )
+  )
+  with check (
+    exists (
+      select 1 from public.lists l
+      where l.id = list_members.list_id
+        and l.org_id in (select public.current_org_ids())
+    )
+  );
 
 -- orgs: visible to members; creation handled by the service role during signup.
 alter table public.orgs enable row level security;

@@ -1,68 +1,63 @@
 import {
-  Building2,
+  BarChart3,
+  Gift,
+  Inbox,
   LayoutDashboard,
-  Mail,
-  Radar,
+  Lightbulb,
+  CircleHelp,
   Settings,
-  Target,
+  Sparkles,
   Users,
+  Workflow,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 /**
- * Sidebar navigation, defined once so the sidebar, the mobile drawer and the
- * page-title lookup can't drift apart.
+ * Sidebar navigation, defined once so the rail, the mobile drawer and the
+ * page-title lookup cannot drift apart.
  *
- * Grouped by the order the user actually moves through the product: define who
- * you're after, see who was found, reach out, then configure.
+ * Flat, not grouped. The previous Sourcing/Outreach headings described how the
+ * system works; this list describes what the user came to do, which is the
+ * order the reference product uses. Three of the old entries folded in rather
+ * than disappeared:
+ *
+ *   Ideal customer -> the Agent owns its own targeting (Sources tab)
+ *   Companies      -> a tab under Contacts
+ *   Signals        -> the SIGNAL column and the contact drawer, where a signal
+ *                     is actually useful, instead of a list nobody opens
  */
 export type NavItem = {
   href: string;
   label: string;
   icon: LucideIcon;
-  /** Shown in the sidebar when there's something waiting. */
-  badgeKey?: "newLeads" | "pendingDrafts";
+  /** Small pill after the label, e.g. "Beta". */
+  tag?: string;
+  /** Shown in the rail when there is something waiting. */
+  badgeKey?: "newLeads" | "pendingDrafts" | "unreadReplies";
 };
 
-export type NavSection = {
-  title?: string;
-  items: NavItem[];
-};
-
-export const NAV_SECTIONS: NavSection[] = [
-  {
-    items: [{ href: "/app", label: "Dashboard", icon: LayoutDashboard }],
-  },
-  {
-    title: "Sourcing",
-    items: [
-      { href: "/app/icp", label: "Ideal customer", icon: Target },
-      { href: "/app/companies", label: "Companies", icon: Building2 },
-      { href: "/app/leads", label: "Leads", icon: Users, badgeKey: "newLeads" },
-      { href: "/app/signals", label: "Signals", icon: Radar },
-    ],
-  },
-  {
-    title: "Outreach",
-    items: [
-      {
-        href: "/app/campaigns",
-        label: "Campaigns",
-        icon: Mail,
-        badgeKey: "pendingDrafts",
-      },
-    ],
-  },
-  {
-    items: [{ href: "/app/settings", label: "Settings", icon: Settings }],
-  },
+export const NAV_ITEMS: NavItem[] = [
+  { href: "/app", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/app/ask", label: "Ask", icon: Sparkles, tag: "Beta" },
+  { href: "/app/agents", label: "Agents", icon: Workflow },
+  { href: "/app/contacts", label: "Contacts", icon: Users, badgeKey: "newLeads" },
+  { href: "/app/inbox", label: "Inbox", icon: Inbox, badgeKey: "unreadReplies" },
+  { href: "/app/insights", label: "Insights", icon: BarChart3 },
+  { href: "/app/settings", label: "Settings", icon: Settings },
 ];
 
-export const ALL_NAV_ITEMS: NavItem[] = NAV_SECTIONS.flatMap((s) => s.items);
+/** Secondary links pinned above the account block. */
+export const NAV_FOOTER_ITEMS: NavItem[] = [
+  { href: "/app/help", label: "Help Center", icon: CircleHelp },
+  { href: "/app/roadmap", label: "Roadmap & Ideas", icon: Lightbulb },
+  { href: "/app/referral", label: "Join Referral program", icon: Gift },
+];
+
+export const ALL_NAV_ITEMS: NavItem[] = [...NAV_ITEMS, ...NAV_FOOTER_ITEMS];
 
 /**
- * Longest-prefix match, so /app/leads/123 resolves to the Leads item while
- * /app itself doesn't swallow every child route.
+ * Longest-prefix match, so /app/agents/123 resolves to the Agents item while
+ * /app itself does not swallow every child route.
  */
 export function activeNavItem(pathname: string): NavItem | undefined {
   return ALL_NAV_ITEMS.filter(

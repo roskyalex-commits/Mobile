@@ -1,5 +1,5 @@
-import { CheckCircle2, CircleDashed, XCircle } from "lucide-react";
-import { PageHeader } from "@/components/app-shell/page";
+import { CheckCircle2, CircleDashed, Settings as SettingsIcon, XCircle } from "lucide-react";
+import { Card, PageHeader } from "@/components/ui/primitives";
 import { describeEnv } from "@/lib/env";
 
 export const dynamic = "force-dynamic";
@@ -87,6 +87,7 @@ export default function SettingsPage() {
   return (
     <>
       <PageHeader
+        icon={SettingsIcon}
         title="Settings"
         description="What's wired up. Everything optional can stay empty — the app degrades to fewer sources rather than failing."
       />
@@ -119,20 +120,22 @@ function Section({
 }) {
   return (
     <section className="mb-8">
-      <h2 className="mb-3 text-sm font-medium uppercase tracking-wide text-muted">
+      <h2 className="mb-3 text-[11px] font-medium uppercase tracking-wide text-muted">
         {title}
       </h2>
-      <ul className="divide-y divide-border overflow-hidden rounded-lg border border-border bg-surface">
+      <Card className="divide-y divide-border overflow-hidden p-0">
+        <ul className="divide-y divide-border">
         {rows.map((row) => (
           <li key={row.label} className="flex gap-3 px-4 py-3">
             <StatusIcon configured={row.configured} required={row.required} />
             <div className="min-w-0">
-              <p className="font-medium">{row.label}</p>
-              <p className="text-sm text-muted">{row.note}</p>
+              <p className="text-[13px] font-medium">{row.label}</p>
+              <p className="text-[13px] text-muted">{row.note}</p>
             </div>
           </li>
         ))}
-      </ul>
+        </ul>
+      </Card>
       {footer && <p className="mt-2 text-xs text-muted">{footer}</p>}
     </section>
   );

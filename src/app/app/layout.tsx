@@ -1,25 +1,32 @@
-import { Sidebar } from "@/components/app-shell/sidebar";
+import { cookies } from "next/headers";
+import { AppShell, SIDEBAR_COOKIE } from "@/components/app-shell/shell";
+import { getShellContext } from "@/lib/data/shell";
 
 /**
- * Application shell: fixed navigation rail on the left, routed content on the
- * right. Everything under /app renders inside this.
+ * Application shell: navigation rail on the left, routed content on the right.
+ * Everything under /app renders inside this.
  *
- * Counts are passed from here rather than fetched inside the sidebar so the
- * nav stays a presentational component and the data fetch happens once per
- * navigation, in a server component.
+ * Counts are resolved here rather than inside the sidebar so the nav stays
+ * presentational and the fetch happens once per navigation, in a server
+ * component.
  */
-export default function AppLayout({ children }: { children: React.ReactNode }) {
-  // TODO(phase-6): replace with real counts once leads and drafts are flowing.
-  const counts = {};
+export default async function AppLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  const [shell, cookieStore] = await Promise.all([getShellContext(), cookies()]);
+  const collapsed = cookieStore.get(SIDEBAR_COOKIE)?.value === "1";
 
   return (
-    <div className="min-h-screen">
-      <Sidebar counts={counts} />
-      <div className="lg:pl-64">
-        <main className="mx-auto max-w-6xl px-6 py-8 pt-16 lg:pt-8">
-          {children}
-        </main>
-      </div>
-    </div>
+    <AppShell
+      user={shell.user}
+      counts={shell.counts}
+      credits={shell.credits}
+      demo={shell.demo}
+      defaultCollapsed={collapsed}
+    >
+      {children}
+    </AppShell>
   );
 }

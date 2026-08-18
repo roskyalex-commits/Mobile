@@ -39,7 +39,7 @@ const admin = createClient(url, serviceKey, {
 
 /** Tables that carry org_id and must be invisible across orgs. */
 const TENANT_TABLES = [
-  "icp_profiles",
+  "agents",
   "leads",
   "campaigns",
   "messages",
@@ -106,7 +106,7 @@ async function createTenant(slug: string) {
 /** Minimal valid row per table, written with the service role. */
 async function seedOrg(orgId: string) {
   const { data: icp } = await admin
-    .from("icp_profiles")
+    .from("agents")
     .insert({ org_id: orgId, name: "RLS probe", website_url: "https://example.test" })
     .select("id")
     .single();
@@ -145,7 +145,7 @@ async function main() {
 
   // --- 1. A sees its own data ---------------------------------------------
   console.log("--- own-org access ---");
-  for (const table of ["icp_profiles", "campaigns", "suppressions", "job_runs"]) {
+  for (const table of ["agents", "campaigns", "suppressions", "job_runs"]) {
     const { count, error } = await countVisible(a.client, table, a.orgId);
     check(
       `A can read its own ${table}`,
@@ -170,7 +170,7 @@ async function main() {
   // --- 3. B cannot write into A's org --------------------------------------
   console.log("--- cross-org writes ---");
   const { error: writeError } = await b.client
-    .from("icp_profiles")
+    .from("agents")
     .insert({ org_id: a.orgId, name: "injected", website_url: "https://evil.test" });
   check(
     "B cannot insert into A's org",

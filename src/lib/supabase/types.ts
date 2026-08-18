@@ -19,7 +19,9 @@
 export type TableName =
   | "orgs"
   | "memberships"
-  | "icp_profiles"
+  | "agents"
+  | "lists"
+  | "list_members"
   | "companies"
   | "people"
   | "emails"

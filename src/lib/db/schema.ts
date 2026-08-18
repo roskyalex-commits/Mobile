@@ -74,17 +74,28 @@ export const memberships = pgTable(
  * `sourceEvidence` keeps the raw page snippets Claude reasoned over so the ICP
  * is auditable rather than a black box.
  */
-export const icpProfiles = pgTable(
-  "icp_profiles",
+/**
+ * An agent: a named, scheduled worker that sources leads against one targeting
+ * profile and (optionally) drafts outreach for them.
+ *
+ * This table was `icp_profiles`. The rename is the product model catching up
+ * with the UI — the user never thinks about "a profile", they think about an
+ * agent that is running, paused, or about to launch. Every targeting field was
+ * already here; only the lifecycle columns are new.
+ */
+export const agents = pgTable(
+  "agents",
   {
     id: id(),
     orgId: uuid("org_id")
       .notNull()
       .references(() => orgs.id, { onDelete: "cascade" }),
-    name: text("name").notNull().default("Default ICP"),
+    name: text("name").notNull().default("My first agent"),
     websiteUrl: text("website_url").notNull(),
 
     valueProp: text("value_prop"),
+    /** Short label for the offering, used in outreach copy. */
+    productName: text("product_name"),
     /** e.g. ["CEO", "Founder", "Marketing Director"] */
     targetTitles: text("target_titles").array().notNull().default([]),
     /** e.g. ["c_level", "vp", "director"] */
@@ -101,15 +112,58 @@ export const icpProfiles = pgTable(
     revenueMinRon: numeric("revenue_min_ron"),
     revenueMaxRon: numeric("revenue_max_ron"),
 
-    /** Which SignalSource keys this ICP subscribes to. */
+    /** e.g. ["smb", "ecommerce"] — from COMPANY_TYPES. */
+    companyTypes: text("company_types").array().notNull().default([]),
+
+    /** Which SignalSource keys this agent subscribes to. */
     enabledSignals: text("enabled_signals").array().notNull().default([]),
+    /**
+     * What the website analysis actually read, plus the assumptions it had to
+     * make. Display-only and never queried, so it stays jsonb rather than
+     * earning columns.
+     */
     sourceEvidence: jsonb("source_evidence"),
+    /** 0..1 — how well the site supported the inference. Drives UI nudges. */
+    confidence: real("confidence").notNull().default(0.5),
+
+    // --- lifecycle ---
+    status: text("status", { enum: ["draft", "active", "paused"] })
+      .notNull()
+      .default("draft"),
+    /** Mailbox this agent sends from. Null until Gmail is connected. */
+    emailAccountId: uuid("email_account_id"),
+    lastLaunchAt: timestamp("last_launch_at", { withTimezone: true }),
+    nextLaunchAt: timestamp("next_launch_at", { withTimezone: true }),
 
     isActive: boolean("is_active").notNull().default(true),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
-  (t) => [index("icp_org_idx").on(t.orgId)],
+  (t) => [
+    index("agents_org_idx").on(t.orgId),
+    index("agents_next_launch_idx").on(t.status, t.nextLaunchAt),
+  ],
+);
+
+/* -------------------------------------------------------------------- lists */
+
+/** User-curated contact lists — the "Lists" tab on Contacts. */
+export const lists = pgTable(
+  "lists",
+  {
+    id: id(),
+    orgId: uuid("org_id")
+      .notNull()
+      .references(() => orgs.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    /** Set when a list was created automatically by an agent launch. */
+    agentId: uuid("agent_id").references(() => agents.id, {
+      onDelete: "set null",
+    }),
+    createdAt: createdAt(),
+    updatedAt: updatedAt(),
+  },
+  (t) => [uniqueIndex("lists_org_name_idx").on(t.orgId, t.name)],
 );
 
 /* --------------------------------------------------------- company universe */
@@ -146,6 +200,8 @@ export const companies = pgTable(
     eFacturaRegistered: boolean("e_factura_registered"),
     /** null = no insolvency record found */
     insolvencyStatus: text("insolvency_status"),
+    /** The trade register's own status string, as imported from ONRC. */
+    onrcStatus: text("onrc_status"),
     registrationDate: date("registration_date"),
     revenueRon: numeric("revenue_ron"),
     revenuePrevRon: numeric("revenue_prev_ron"),
@@ -164,6 +220,8 @@ export const companies = pgTable(
     uniqueIndex("companies_cui_idx").on(t.cui),
     index("companies_caen_idx").on(t.caen),
     index("companies_country_city_idx").on(t.country, t.city),
+    // The exact shape of the seeded-slice query the ANAF adapter runs.
+    index("companies_country_vat_caen_idx").on(t.country, t.vatRegistered, t.caen),
   ],
 );
 
@@ -276,9 +334,9 @@ export const leads = pgTable(
     orgId: uuid("org_id")
       .notNull()
       .references(() => orgs.id, { onDelete: "cascade" }),
-    icpProfileId: uuid("icp_profile_id")
+    agentId: uuid("agent_id")
       .notNull()
-      .references(() => icpProfiles.id, { onDelete: "cascade" }),
+      .references(() => agents.id, { onDelete: "cascade" }),
     companyId: uuid("company_id")
       .notNull()
       .references(() => companies.id, { onDelete: "cascade" }),
@@ -309,12 +367,42 @@ export const leads = pgTable(
     /** Cached from company.country so compliance rules resolve without a join. */
     complianceRegion: text("compliance_region"),
     rejectedReason: text("rejected_reason"),
+
+    /**
+     * The user's verdict on this lead, from the FIT column. Explicit training
+     * data for later scoring work — and, unlike an implicit signal such as
+     * "did they send", it distinguishes "wrong" from "not yet".
+     */
+    fitFeedback: text("fit_feedback", { enum: ["good", "unsure", "bad"] }),
+    /** Which sourcing path produced this lead. Groups the Insights grid. */
+    sourceLabel: text("source_label"),
+    /** The keyword or CAEN code the launch ran on, shown under the chip. */
+    sourceQuery: text("source_query"),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
   (t) => [
-    uniqueIndex("leads_icp_person_idx").on(t.icpProfileId, t.personId),
+    uniqueIndex("leads_agent_person_idx").on(t.agentId, t.personId),
     index("leads_org_status_score_idx").on(t.orgId, t.status, t.score),
+    index("leads_agent_created_idx").on(t.agentId, t.createdAt),
+  ],
+);
+
+/** Membership is by lead, not by person: a list is scoped to one workspace. */
+export const listMembers = pgTable(
+  "list_members",
+  {
+    listId: uuid("list_id")
+      .notNull()
+      .references(() => lists.id, { onDelete: "cascade" }),
+    leadId: uuid("lead_id")
+      .notNull()
+      .references(() => leads.id, { onDelete: "cascade" }),
+    createdAt: createdAt(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.listId, t.leadId] }),
+    index("list_members_lead_idx").on(t.leadId),
   ],
 );
 
@@ -327,7 +415,7 @@ export const campaigns = pgTable(
     orgId: uuid("org_id")
       .notNull()
       .references(() => orgs.id, { onDelete: "cascade" }),
-    icpProfileId: uuid("icp_profile_id").references(() => icpProfiles.id, {
+    agentId: uuid("agent_id").references(() => agents.id, {
       onDelete: "set null",
     }),
     name: text("name").notNull(),
@@ -495,20 +583,44 @@ export const suppressions = pgTable(
   (t) => [uniqueIndex("suppressions_org_value_idx").on(t.orgId, t.value)],
 );
 
-/** Append-only audit of agent runs, so a user can see what the agent did and when. */
+/**
+ * Append-only audit of agent runs. Read by two surfaces, which is why it
+ * carries display strings and not only stats: the per-agent Activity Feed
+ * ("21 new leads found") and the Insights grid, which groups launches by agent,
+ * day and source. Deriving those strings at read time from `stats` would put
+ * the copy for every run kind in the renderer instead of next to the code that
+ * produced the run.
+ */
 export const jobRuns = pgTable(
   "job_runs",
   {
     id: id(),
     orgId: uuid("org_id").references(() => orgs.id, { onDelete: "cascade" }),
+    agentId: uuid("agent_id").references(() => agents.id, {
+      onDelete: "cascade",
+    }),
     kind: text("kind").notNull(),
     status: text("status", { enum: ["running", "ok", "failed"] })
       .notNull()
       .default("running"),
+
+    /** Feed headline, e.g. "21 new leads found" or "Email sent". */
+    title: text("title"),
+    /** Feed second line: the person, the keyword, the agent name. */
+    subtitle: text("subtitle"),
+    /** keyword | lookalike | autopilot | signal — groups the Insights grid. */
+    sourceLabel: text("source_label"),
+    /** The keyword or code this launch ran on. */
+    sourceQuery: text("source_query"),
+    leadsFound: integer("leads_found").notNull().default(0),
+
     stats: jsonb("stats"),
     error: text("error"),
     startedAt: createdAt(),
     finishedAt: timestamp("finished_at", { withTimezone: true }),
   },
-  (t) => [index("job_runs_org_kind_idx").on(t.orgId, t.kind)],
+  (t) => [
+    index("job_runs_org_kind_idx").on(t.orgId, t.kind),
+    index("job_runs_agent_started_idx").on(t.agentId, t.startedAt),
+  ],
 );

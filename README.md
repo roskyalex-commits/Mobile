@@ -21,11 +21,38 @@ differing in three ways that matter:
 
 ## Status
 
-Phases 0–6 are implemented with 360 tests. Nothing has run against live
-infrastructure yet — the environment this was built in had no outbound network
-access, so anything touching a third party is covered by tests and fixtures and
-carries a verification script to run once you have credentials. See
-[Verifying against real services](#verifying-against-real-services).
+The engine and the interface are both built; nothing is wired to a database yet.
+380 tests pass.
+
+With no Supabase project configured the app runs on a **demo dataset** — every
+screen is real, and every score in it is computed by the actual scoring engine
+rather than written down, so a scoring regression shows up as a wrong number on
+screen. A "Demo data" marker sits in the sidebar and disappears on its own once
+`NEXT_PUBLIC_SUPABASE_URL` is set.
+
+Nothing has run against live infrastructure. The environment this was built in
+had no outbound network access, so anything touching a third party is covered by
+tests and fixtures and carries a verification script to run once you have
+credentials. See [Verifying against real services](#verifying-against-real-services).
+
+## The product model
+
+An **agent** is the unit of work: a named, scheduled worker with one targeting
+profile, its own mailbox, and its own Overview / Leads / Queue / Sources /
+Campaign / Activity / Settings. Everything else hangs off it — Contacts is every
+lead every agent found, Insights is which launch found what on which day.
+
+Two things the interface deliberately does not have:
+
+- **LinkedIn.** Engagement data needs a paid API or a terms-violating scraper.
+  Where a competitor plots "invitations sent", this plots companies sourced and
+  signals detected — things it can actually measure.
+- **Reply tracking.** Reading a Gmail mailbox needs `gmail.readonly`, which
+  Google classifies as *restricted*: an annual CASA Tier 2 assessment, roughly
+  $540-1,000/yr. Sending needs only `gmail.send` and `gmail.compose`, which are
+  *sensitive* — about ten days of verification, no fee. So outreach works and
+  reply rate stays at zero rather than being estimated. Deliverability is
+  reported instead, because it is measured.
 
 ## Stack
 
@@ -66,7 +93,7 @@ could not be exercised at build time.
 
 ```bash
 npm run dev            # local dev server
-npm test               # 360 tests
+npm test               # 380 tests
 npm run typecheck      # tsc --noEmit
 npm run lint
 npm run cf:deploy      # build + deploy to Cloudflare Workers
@@ -77,17 +104,27 @@ npm run db:setup       # drizzle push + RLS policies
 
 ```
 src/lib/
+  data/         view models + the demo dataset — the seam every page reads
   icp/          website -> structured ICP (the onboarding magic moment)
   crawl/        polite site reader + tech-stack fingerprinting
   sources/      lead sourcing — ANAF/ONRC registry, CAEN, people providers
   enrichment/   email waterfall: patterns, MX, credit ledger
   signals/      buying signals and the scoring engine
   outreach/     Gmail, MIME, jurisdiction rules, send guardrails
+  ask/          tools Claude may call to answer questions about your data
   export/       CSV with formula-injection protection
   billing/      plan limits
+src/components/
+  app-shell/    collapsible rail, navigation
+  charts/       hand-rolled SVG area chart (no chart library)
+  contacts/     the dense contacts table
 scripts/        verification scripts and the coverage spike
 drizzle/        schema and RLS policies
 ```
+
+Pages never touch the database. They read `src/lib/data/*`, which returns typed
+view models — fixtures today, queries next. That seam is why the interface will
+not have to be rebuilt when persistence lands.
 
 ## Known constraints
 
